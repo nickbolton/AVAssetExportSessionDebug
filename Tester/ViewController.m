@@ -11,17 +11,15 @@
 #import <AVFoundation/AVFoundation.h>
 #import "Bedrock.h"
 
+static NSTimeInterval const kTestDuration = 3.0f;
+static NSTimeInterval const kTestStartTime = 10.0f;
+
 @interface ViewController ()
 
 @property (nonatomic, strong) NSURL *sourceAudioURL;
 @property (strong, nonatomic) AVPlayer *player;
-@property (nonatomic) NSTimeInterval timeRecordSessionStarted;
-@property (nonatomic) NSTimeInterval timeRecordSessionEnded;
-@property (nonatomic) NSTimeInterval songTimeAtRecordSessionStart;
-@property (nonatomic) NSTimeInterval songTimeAtRecordSessionEnd;
-@property (nonatomic, readonly) NSTimeInterval recordSessionDuration;
-@property (nonatomic) NSTimeInterval originalStartTime;
-@property (nonatomic, nonatomic) AVPlayer *trimmedPlayer;
+@property (nonatomic) NSTimeInterval audioStartTime;
+@property (nonatomic, nonatomic) AVPlayer *trimmedAudioPlayer;
 
 @end
 
@@ -44,99 +42,35 @@
     [mainBundle URLForResource:@"SourceAudio" withExtension:@"mp3"];
     
     self.player = [AVPlayer playerWithURL:self.sourceAudioURL];
-    [self.player play];
+//    [self.player play];
 }
 
 - (void)setupGestures {
  
-    UILongPressGestureRecognizer *longPressGesture =
-    [[UILongPressGestureRecognizer alloc]
-     initWithTarget:self action:@selector(handleLongPress:)];
+    UITapGestureRecognizer *tapGesture =
+    [[UITapGestureRecognizer alloc]
+     initWithTarget:self action:@selector(handleTap:)];
  
-    [self.view addGestureRecognizer:longPressGesture];
+    [self.view addGestureRecognizer:tapGesture];
 }
 
 - (void)viewDidLoad {
-    self.originalStartTime = -1.0f;
     [super viewDidLoad];
     [self setupMusicPlayer];
     [self setupGestures];
-}
-
-#pragma mark - Getters and Setters
-
-- (NSTimeInterval)recordSessionDuration {
-    
-    if (self.timeRecordSessionEnded > 0.0f) {
-        return self.timeRecordSessionEnded - self.timeRecordSessionStarted;
-    }
-    return 0.0f;
+    [self exportSong];
 }
 
 #pragma mark - Gestures
 
-- (void)handleLongPress:(UIGestureRecognizer *)gesture {
+- (void)handleTap:(UIGestureRecognizer *)gesture {
     
-    switch (gesture.state) {
-        case UIGestureRecognizerStateBegan:
-            [self handleLongPressBegan:gesture];
-            break;
+    if (gesture.state == UIGestureRecognizerStateEnded) {
+        if (self.trimmedAudioPlayer != nil) {
             
-        case UIGestureRecognizerStateChanged:
-            [self handleLongPressChanged:gesture];
-            break;
-            
-        default:
-            [self handleLongPressEnded:gesture];
-            break;
-    }
-}
-
-- (void)handleLongPressBegan:(UIGestureRecognizer *)gesture {
-    
-    NSLog(@"%s", __PRETTY_FUNCTION__);
-    
-    self.timeRecordSessionStarted = [NSDate timeIntervalSinceReferenceDate];
-    self.timeRecordSessionEnded = 0.0f;
-    self.songTimeAtRecordSessionStart = CMTimeGetSeconds(self.player.currentTime);
-}
-
-- (void)handleLongPressChanged:(UIGestureRecognizer *)gesture {
-}
-
-- (void)handleLongPressEnded:(UIGestureRecognizer *)gesture {
-    
-    static NSTimeInterval const startTime = 10.0f;
-    static NSTimeInterval const duration = 3.0f;
-    
-    self.timeRecordSessionEnded = self.timeRecordSessionStarted + duration;//[NSDate timeIntervalSinceReferenceDate];
-//    self.songTimeAtRecordSessionEnd = CMTimeGetSeconds(self.player.currentTime);
-    self.songTimeAtRecordSessionStart = startTime; // remove
-    
-    if (self.originalStartTime < 0.0f) {
-        self.originalStartTime = CMTimeGetSeconds(self.player.currentItem.duration);
-        self.originalStartTime = startTime;
-    }
-    
-    //self.songTimeAtRecordSessionStart = self.originalStartTime - duration; // remove
-    self.songTimeAtRecordSessionStart = self.originalStartTime;
-    
-    PBLog(@"duration: %f", self.recordSessionDuration);
-    PBLog(@"songTimeAtStart: %f", self.songTimeAtRecordSessionStart);
-    
-    [self.player pause];
-    
-    if (self.trimmedPlayer != nil) {
-        
-        [self.trimmedPlayer seekToTime:kCMTimeZero];
-        [self.trimmedPlayer play];
-        
-    } else {
-    
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
-            
-            [self exportSong];
-        });
+            [self.trimmedAudioPlayer seekToTime:kCMTimeZero];
+            [self.trimmedAudioPlayer play];
+        }
     }
 }
 
@@ -155,17 +89,16 @@
     
     [self
      exportAsset:audioAsset
-     audioStartTime:self.songTimeAtRecordSessionStart
-     duration:self.recordSessionDuration
+     audioStartTime:kTestStartTime
+     duration:kTestDuration
      outputURL:exportUrl
      completion:^(NSURL *audioURL) {
          
          if (audioURL != nil) {
-             self.trimmedPlayer = [AVPlayer playerWithURL:audioURL];
-             [self.trimmedPlayer play];
+             self.trimmedAudioPlayer = [AVPlayer playerWithURL:audioURL];
+             [self.trimmedAudioPlayer play];
          }
      }];
-
 }
 
 - (void)exportAsset:(AVAsset*)asset
