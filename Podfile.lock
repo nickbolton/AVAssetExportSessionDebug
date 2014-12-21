@@ -1,0 +1,17 @@
+PODS:
+  - Bedrock/AutoLayout (0.0.1)
+  - Bedrock/Core (0.0.1)
+
+DEPENDENCIES:
+  - Bedrock/AutoLayout (from `https://github.com/nickbolton/PBBedrock.git`, branch `master`)
+  - Bedrock/Core (from `https://github.com/nickbolton/PBBedrock.git`, branch `master`)
+
+EXTERNAL SOURCES:
+  Bedrock:
+    :branch: master
+    :git: https://github.com/nickbolton/PBBedrock.git
+
+SPEC CHECKSUMS:
+  Bedrock: eaddd8fbc2686143c71c2ba2344e463047ee9466
+
+COCOAPODS: 0.34.2
