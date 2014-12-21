@@ -7,9 +7,9 @@
 //
 
 #import "ViewController.h"
+#import <Foundation/Foundation.h>
 #import <MediaPlayer/MediaPlayer.h>
 #import <AVFoundation/AVFoundation.h>
-#import "Bedrock.h"
 
 static NSTimeInterval const kTestDuration = 3.0f;
 static NSTimeInterval const kTestStartTime = 10.0f;
@@ -33,7 +33,7 @@ static NSTimeInterval const kTestStartTime = 10.0f;
      error:&error];
     
     if (error != nil) {
-        PBLog(@"Error: %@", error);
+        NSLog(@"Error: %@", error);
     }
     
     NSBundle *mainBundle = [NSBundle mainBundle];
@@ -78,14 +78,21 @@ static NSTimeInterval const kTestStartTime = 10.0f;
 
 - (void)exportSong {
 
+    NSFileManager *fm = [NSFileManager defaultManager];
     AVURLAsset* audioAsset = [[AVURLAsset alloc]initWithURL:self.sourceAudioURL options:nil];
     
     NSString* fileName =
-    [NSString stringWithFormat:@"exported-audio-%@.m4a", [NSString uuidString]];
+    [NSString stringWithFormat:@"exported-audio-%@.m4a", [[NSUUID new] UUIDString]];
     
     NSString *exportPath = [NSTemporaryDirectory() stringByAppendingPathComponent:fileName];
-    NSURL    *exportUrl = [NSURL fileURLWithPath:exportPath];
     
+    if ([fm fileExistsAtPath:exportPath]) {
+        
+        NSError *error = nil;
+        [fm removeItemAtPath:exportPath error:&error];
+    }
+    
+    NSURL    *exportUrl = [NSURL fileURLWithPath:exportPath];
     
     [self
      exportAsset:audioAsset
@@ -112,7 +119,7 @@ static NSTimeInterval const kTestStartTime = 10.0f;
     AVAssetExportSession* exporter = [AVAssetExportSession exportSessionWithAsset:asset presetName:AVAssetExportPresetAppleM4A];
     
     if (exporter == nil) {
-        PBLog(@"Failed creating exporter!");
+        NSLog(@"Failed creating exporter!");
         
         if (completionBlock != nil) {
             completionBlock(nil);
@@ -120,10 +127,10 @@ static NSTimeInterval const kTestStartTime = 10.0f;
         return;
     }
     
-    PBLog(@"Created exporter! %@", exporter);
+    NSLog(@"Created exporter! %@", exporter);
     
     // Set output file type
-    PBLog(@"Supported file types: %@", exporter.supportedFileTypes);
+    NSLog(@"Supported file types: %@", exporter.supportedFileTypes);
     for (NSString* filetype in exporter.supportedFileTypes) {
         if ([filetype isEqualToString:AVFileTypeAppleM4A]) {
             exporter.outputFileType = AVFileTypeAppleM4A;
@@ -131,7 +138,7 @@ static NSTimeInterval const kTestStartTime = 10.0f;
         }
     }
     if (exporter.outputFileType == nil) {
-        PBLog(@"Needed output file type not found? (%@)", AVFileTypeAppleM4A);
+        NSLog(@"Needed output file type not found? (%@)", AVFileTypeAppleM4A);
         if (completionBlock != nil) {
             completionBlock(nil);
         }
@@ -156,12 +163,12 @@ static NSTimeInterval const kTestStartTime = 10.0f;
     CMTime startTime = CMTimeMakeWithSeconds(audioStartTime + CMTimeGetSeconds(audioTrackTimeRange.start), 1);
     CMTime durationTime = CMTimeMakeWithSeconds(duration, 1);
     
-    PBLog(@"startTime: %f", CMTimeGetSeconds(startTime));
-    PBLog(@"duration: %f", CMTimeGetSeconds(durationTime));
+    NSLog(@"startTime: %f", CMTimeGetSeconds(startTime));
+    NSLog(@"duration: %f", CMTimeGetSeconds(durationTime));
     exporter.timeRange = CMTimeRangeMake(startTime, durationTime);
     exporter.audioMix = mix;
     
-    PBLog(@"Starting export! (%@)", exporter.outputURL);
+    NSLog(@"Starting export! (%@)", exporter.outputURL);
     [exporter exportAsynchronouslyWithCompletionHandler:^(void) {
         // Export ended for some reason. Check in status
         NSString* message;
@@ -169,7 +176,7 @@ static NSTimeInterval const kTestStartTime = 10.0f;
             case AVAssetExportSessionStatusFailed:
                 
                 message = [NSString stringWithFormat:@"Export failed. Error: %@", exporter.error.description];
-                PBLog(@"%@", message);
+                NSLog(@"%@", message);
                 
                 if (completionBlock != nil) {
                     completionBlock(nil);
@@ -180,7 +187,7 @@ static NSTimeInterval const kTestStartTime = 10.0f;
             case AVAssetExportSessionStatusCompleted: {
                 
                 message = [NSString stringWithFormat:@"Export completed: %@", outputURL.absoluteString];
-                PBLog(@"%@", message);
+                NSLog(@"%@", message);
                 
                 if (completionBlock != nil) {
                     completionBlock(outputURL);
@@ -192,7 +199,7 @@ static NSTimeInterval const kTestStartTime = 10.0f;
             case AVAssetExportSessionStatusCancelled:
                 
                 message = [NSString stringWithFormat:@"Export cancelled!"];
-                PBLog(@"%@", message);
+                NSLog(@"%@", message);
                 
                 if (completionBlock != nil) {
                     completionBlock(nil);
@@ -201,7 +208,7 @@ static NSTimeInterval const kTestStartTime = 10.0f;
                 break;
                 
             default:
-                PBLog(@"Export unhandled status: %ld", exporter.status);
+                NSLog(@"Export unhandled status: %ld", exporter.status);
                 
                 if (completionBlock != nil) {
                     completionBlock(nil);
